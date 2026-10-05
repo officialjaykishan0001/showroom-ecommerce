@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { loginUser } from "@/lib/auth";
 import { useAuthStore } from "@/stores/authStore";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
+
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -223,12 +225,7 @@ export default function LoginPage() {
               </div>
 
               {/* Google */}
-              <button
-                type="button"
-                className="w-full border border-stone-300 bg-white py-4 text-sm transition hover:border-[var(--brand-deep-forest-green)] hover:bg-stone-50"
-              >
-                Continue with Google
-              </button>
+              <GoogleAuthButton onError={setError} />
 
               <p className="mt-8 text-center text-stone-500">
                 Don't have an account?{" "}

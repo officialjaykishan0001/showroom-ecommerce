@@ -14,6 +14,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
 
 function NotFoundComponent() {
   return (
@@ -123,21 +125,25 @@ function RootComponent() {
     "/signup",
     "/admin/dashboard",
     "/admin/customers",
-    "/admin/settings",  
+    "/admin/settings",
     "/admin/orders",
   ].includes(pathname);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background text-foreground">
-        {!hideLayout && <Navbar />}
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
 
-        <main>
-          <Outlet />
-        </main>
+      <QueryClientProvider client={queryClient}>
+        <div className="min-h-screen bg-background text-foreground">
+          {!hideLayout && <Navbar />}
 
-        {!hideLayout && <Footer />}
-      </div>
-    </QueryClientProvider>
+          <main>
+            <Outlet />
+          </main>
+
+          {!hideLayout && <Footer />}
+        </div>
+      </QueryClientProvider>
+    </GoogleOAuthProvider>
+
   );
 }
