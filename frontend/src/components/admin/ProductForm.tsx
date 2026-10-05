@@ -10,6 +10,10 @@ import {
   Images,
   SlidersHorizontal,
   ChevronDown,
+  BadgeCheck,
+  FileText,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 
 import type {
@@ -78,6 +82,31 @@ const emptyForm: FormState = {
   badges: [],
   accordion: [],
 };
+
+/* -------------------------------------------------------------------------- */
+/* UI CONSTANTS                                                               */
+/* -------------------------------------------------------------------------- */
+
+// NOTE: values must match what the storefront pages filter on.
+// /sofas      -> category includes "sofa"
+// /furnitures -> category === "furniture"
+// /curtains   -> category === "curtains"
+// /clothes    -> category === "clothes"
+const categoryOptions = [
+  { value: "Sofas", label: "Sofas", page: "/sofas" },
+  { value: "Furniture", label: "Furniture", page: "/furnitures" },
+  { value: "Curtains", label: "Curtains", page: "/curtains" },
+  { value: "Clothes", label: "Clothes", page: "/clothes" },
+];
+
+const inputBase =
+  "h-11 w-full rounded-xl border border-black/10 bg-[#F9F7F3] text-sm text-[#20251F] outline-none transition placeholder:text-black/30 hover:border-black/20 focus:border-[#6E805D] focus:bg-white focus:ring-4 focus:ring-[#6E805D]/10";
+
+const inputClass = `${inputBase} px-4`;
+const inputPrefixClass = `${inputBase} pl-8 pr-4`;
+const selectClass = `${inputBase} cursor-pointer appearance-none pl-4 pr-10`;
+const textareaClass =
+  "w-full resize-none rounded-xl border border-black/10 bg-[#F9F7F3] px-4 py-3 text-sm leading-6 text-[#20251F] outline-none transition placeholder:text-black/30 hover:border-black/20 focus:border-[#6E805D] focus:bg-white focus:ring-4 focus:ring-[#6E805D]/10";
 
 function generateSlug(value: string) {
   return value
@@ -172,11 +201,6 @@ export default function ProductForm({
 
   /*
    * Product name -> automatic slug
-   *
-   * Example:
-   * Luxury Sofa
-   *       ↓
-   * luxury-sofa
    *
    * Once the admin manually changes the slug,
    * changing the name will no longer overwrite it.
@@ -418,6 +442,37 @@ export default function ProductForm({
 
     return slugManuallyEdited ? "manual" : "automatic";
   }, [form.slug, slugManuallyEdited]);
+
+  /* ------------------------------------------------------------------ */
+  /* DERIVED UI VALUES (display only)                                    */
+  /* ------------------------------------------------------------------ */
+
+  const requiredChecks = [
+    Boolean(form.name.trim()),
+    Boolean(form.slug.trim()) && isValidSlug(form.slug.trim()),
+    Boolean(form.category.trim()),
+    Boolean(form.price) && !Number.isNaN(Number(form.price)),
+    totalImageCount > 0,
+  ];
+
+  const completedSteps = requiredChecks.filter(Boolean).length;
+  const progressPercent = Math.round(
+    (completedSteps / requiredChecks.length) * 100
+  );
+
+  const priceNumber = Number(form.price);
+  const compareNumber = Number(form.compareAtPrice);
+
+  const discountPercent =
+    priceNumber > 0 && compareNumber > priceNumber
+      ? Math.round(
+          ((compareNumber - priceNumber) / compareNumber) * 100
+        )
+      : 0;
+
+  const selectedCategory = categoryOptions.find(
+    (option) => option.value === form.category
+  );
 
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>
@@ -684,29 +739,43 @@ export default function ProductForm({
             </div>
 
             <h2 className="mt-1 truncate text-xl font-medium tracking-tight sm:text-2xl">
-              {product ? product.name : "Add a new product"}
+              {product
+                ? product.name
+                : form.name.trim() || "Add a new product"}
             </h2>
           </div>
 
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close"
             className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white transition hover:border-black/20 hover:bg-black hover:text-white"
           >
             <X size={18} />
           </button>
         </header>
 
+        {/* PROGRESS */}
+        <div className="h-1 w-full shrink-0 bg-black/5">
+          <div
+            className="h-full bg-[#6E805D] transition-all duration-500"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
         {/* CONTENT */}
         <form
           onSubmit={handleSubmit}
           className="min-h-0 flex-1 overflow-y-auto"
         >
-          <div className="space-y-6 p-5 pb-32 sm:p-8">
+          <div className="space-y-6 p-5 pb-40 sm:p-8 sm:pb-40">
 
             {error && (
               <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
-                <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-500" />
+                <AlertCircle
+                  size={17}
+                  className="mt-0.5 shrink-0"
+                />
                 <p>{error}</p>
               </div>
             )}
@@ -726,7 +795,7 @@ export default function ProductForm({
                       handleNameChange(e.target.value)
                     }
                     placeholder="Luxury Chesterfield Sofa"
-                    className="input"
+                    className={inputClass}
                   />
                 </Field>
 
@@ -738,7 +807,9 @@ export default function ProductForm({
                       ? "Automatically generated"
                       : slugStatus === "manual"
                         ? "Manually customized"
-                        : undefined
+                        : slugStatus === "invalid"
+                          ? "Invalid format"
+                          : undefined
                   }
                 >
                   <div className="relative">
@@ -748,7 +819,7 @@ export default function ProductForm({
                         handleSlugChange(e.target.value)
                       }
                       placeholder="luxury-chesterfield-sofa"
-                      className="input pr-10"
+                      className={`${inputBase} pl-4 pr-14`}
                     />
 
                     {slugManuallyEdited && (
@@ -756,12 +827,27 @@ export default function ProductForm({
                         type="button"
                         onClick={resetSlugToAutomatic}
                         title="Generate from product name"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium text-[#6E805D] hover:text-black"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-[#6E805D] transition hover:bg-[#6E805D]/10 hover:text-black"
                       >
                         Auto
                       </button>
                     )}
                   </div>
+
+                  {form.slug && (
+                    <p className="mt-2 truncate text-[11px] text-black/35">
+                      Product link:{" "}
+                      <span
+                        className={
+                          slugStatus === "invalid"
+                            ? "text-red-500"
+                            : "text-black/55"
+                        }
+                      >
+                        /product/{form.slug}
+                      </span>
+                    </p>
+                  )}
                 </Field>
 
                 <Field label="Brand">
@@ -771,22 +857,55 @@ export default function ProductForm({
                       updateField("brand", e.target.value)
                     }
                     placeholder="Decorden"
-                    className="input"
+                    className={inputClass}
                   />
                 </Field>
 
                 <Field label="Category" required>
-                  <input
-                    value={form.category}
-                    onChange={(e) =>
-                      updateField(
-                        "category",
-                        e.target.value
-                      )
-                    }
-                    placeholder="Sofas"
-                    className="input"
-                  />
+                  <div className="relative">
+                    <select
+                      value={form.category}
+                      onChange={(e) =>
+                        updateField(
+                          "category",
+                          e.target.value
+                        )
+                      }
+                      className={selectClass}
+                    >
+                      {/* Keeps older/custom categories selectable when editing */}
+                      {form.category &&
+                        !selectedCategory && (
+                          <option value={form.category}>
+                            {form.category} (current)
+                          </option>
+                        )}
+
+                      {categoryOptions.map((option) => (
+                        <option
+                          key={option.value}
+                          value={option.value}
+                        >
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <ChevronDown
+                      size={16}
+                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-black/40"
+                    />
+                  </div>
+
+                  {selectedCategory && (
+                    <p className="mt-2 text-[11px] text-black/35">
+                      Will appear on the{" "}
+                      <span className="text-black/55">
+                        {selectedCategory.page}
+                      </span>{" "}
+                      page.
+                    </p>
+                  )}
                 </Field>
               </div>
 
@@ -800,14 +919,20 @@ export default function ProductForm({
                     )
                   }
                   rows={6}
-                  className="input resize-none"
+                  className={textareaClass}
                   placeholder="Describe the product, materials, design, comfort and other important details..."
                 />
 
-                <p className="mt-2 text-[11px] text-black/35">
-                  Write a clear description that helps customers
-                  understand the product.
-                </p>
+                <div className="mt-2 flex items-center justify-between text-[11px] text-black/35">
+                  <span>
+                    Write a clear description that helps
+                    customers understand the product.
+                  </span>
+
+                  <span className="shrink-0 pl-3 tabular-nums">
+                    {form.description.length} characters
+                  </span>
+                </div>
               </Field>
 
               <Field
@@ -819,9 +944,26 @@ export default function ProductForm({
                   onChange={(e) =>
                     updateField("tags", e.target.value)
                   }
-                  className="input"
+                  className={inputClass}
                   placeholder="chesterfield, luxury, leather, sofa"
                 />
+
+                {form.tags.trim() && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {form.tags
+                      .split(",")
+                      .map((tag) => tag.trim())
+                      .filter(Boolean)
+                      .map((tag, index) => (
+                        <span
+                          key={`${tag}-${index}`}
+                          className="rounded-full bg-[#6E805D]/10 px-3 py-1 text-[11px] font-medium text-[#536348]"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                  </div>
+                )}
               </Field>
             </FormSection>
 
@@ -835,7 +977,7 @@ export default function ProductForm({
 
                 <Field label="Selling price" required>
                   <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-black/40">
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-black/40">
                       ₹
                     </span>
 
@@ -850,15 +992,22 @@ export default function ProductForm({
                           e.target.value
                         )
                       }
-                      className="input pl-8"
+                      className={inputPrefixClass}
                       placeholder="89999"
                     />
                   </div>
                 </Field>
 
-                <Field label="Compare at price">
+                <Field
+                  label="Compare at price"
+                  hint={
+                    discountPercent > 0
+                      ? `${discountPercent}% off`
+                      : undefined
+                  }
+                >
                   <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-black/40">
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-black/40">
                       ₹
                     </span>
 
@@ -873,7 +1022,7 @@ export default function ProductForm({
                           e.target.value
                         )
                       }
-                      className="input pl-8"
+                      className={inputPrefixClass}
                       placeholder="109999"
                     />
                   </div>
@@ -888,7 +1037,7 @@ export default function ProductForm({
                         e.target.value.toUpperCase()
                       )
                     }
-                    className="input"
+                    className={inputClass}
                     placeholder="INR"
                   />
                 </Field>
@@ -904,12 +1053,12 @@ export default function ProductForm({
                         e.target.value
                       )
                     }
-                    className="input"
+                    className={inputClass}
                     placeholder="10"
                   />
                 </Field>
 
-                <Field label="Rating">
+                <Field label="Rating" hint="0 – 5">
                   <input
                     type="number"
                     min="0"
@@ -922,7 +1071,7 @@ export default function ProductForm({
                         e.target.value
                       )
                     }
-                    className="input"
+                    className={inputClass}
                     placeholder="4.8"
                   />
                 </Field>
@@ -938,11 +1087,20 @@ export default function ProductForm({
                         e.target.value
                       )
                     }
-                    className="input"
+                    className={inputClass}
                     placeholder="24"
                   />
                 </Field>
               </div>
+
+              {discountPercent > 0 && (
+                <div className="flex items-center gap-2 rounded-xl bg-[#6E805D]/10 px-4 py-3 text-xs text-[#536348]">
+                  <CheckCircle2 size={14} className="shrink-0" />
+                  Customers will see a{" "}
+                  <strong>−{discountPercent}%</strong> discount
+                  badge on this product.
+                </div>
+              )}
 
               <div className="grid gap-3 sm:grid-cols-2">
 
@@ -971,10 +1129,10 @@ export default function ProductForm({
             <FormSection
               icon={<Images size={17} />}
               title="Product images"
-              description={`Add up to 10 images. ${imageSlotsLeft} slot${imageSlotsLeft === 1 ? "" : "s"} remaining.`}
+              description={`Add up to 10 images. ${imageSlotsLeft} slot${imageSlotsLeft === 1 ? "" : "s"} remaining. The first image is used as the cover.`}
             >
               {totalImageCount === 0 ? (
-                <div className="rounded-3xl border border-dashed border-black/15 bg-[#F9F7F3] p-8 text-center">
+                <div className="relative rounded-3xl border-2 border-dashed border-black/15 bg-[#F9F7F3] p-10 text-center transition hover:border-[#6E805D] hover:bg-[#F3F6EF]">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm">
                     <ImagePlus
                       size={23}
@@ -983,25 +1141,27 @@ export default function ProductForm({
                   </div>
 
                   <h4 className="mt-4 text-sm font-medium">
-                    Add product images
+                    Drag & drop images here
                   </h4>
 
                   <p className="mt-1 text-xs text-black/40">
-                    High quality product images work best.
+                    or click to browse. High quality product
+                    images work best.
                   </p>
 
-                  <label className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#20251F] px-5 py-2.5 text-xs font-medium text-white transition hover:bg-[#9CAF88] hover:text-[#20251F]">
+                  <span className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#20251F] px-5 py-2.5 text-xs font-medium text-white">
                     <ImagePlus size={15} />
                     Choose images
+                  </span>
 
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      onChange={handleImageChange}
-                    />
-                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    aria-label="Choose product images"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    onChange={handleImageChange}
+                  />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -1017,6 +1177,7 @@ export default function ProductForm({
                         removeExistingImage(index)
                       }
                       badge="Saved"
+                      cover={index === 0}
                     />
                   ))}
 
@@ -1029,15 +1190,19 @@ export default function ProductForm({
                         removeNewImage(index)
                       }
                       badge="New"
+                      cover={
+                        existingImages.length === 0 &&
+                        index === 0
+                      }
                     />
                   ))}
 
                   {imageSlotsLeft > 0 && (
-                    <label className="group flex aspect-square cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-black/15 bg-white transition hover:border-[#9CAF88] hover:bg-[#F9F7F3]">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F6F1EA] transition group-hover:bg-[#9CAF88]">
+                    <div className="group relative flex aspect-square flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/15 bg-white transition hover:border-[#6E805D] hover:bg-[#F3F6EF]">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F6F1EA] transition group-hover:bg-[#6E805D]">
                         <Plus
                           size={18}
-                          className="text-black/45"
+                          className="text-black/45 transition group-hover:text-white"
                         />
                       </div>
 
@@ -1049,10 +1214,11 @@ export default function ProductForm({
                         type="file"
                         accept="image/*"
                         multiple
-                        className="hidden"
+                        aria-label="Add more product images"
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                         onChange={handleImageChange}
                       />
-                    </label>
+                    </div>
                   )}
                 </div>
               )}
@@ -1069,8 +1235,12 @@ export default function ProductForm({
               icon={<SlidersHorizontal size={17} />}
               title="Variants"
               description="Create different sizes, configurations or versions of this product."
+              optional
             >
-              <Field label="Variant label">
+              <Field
+                label="Variant label"
+                hint="Shown above the options, e.g. Size"
+              >
                 <input
                   value={form.variantLabel}
                   onChange={(e) =>
@@ -1079,7 +1249,7 @@ export default function ProductForm({
                       e.target.value
                     )
                   }
-                  className="input"
+                  className={inputClass}
                   placeholder="Size"
                 />
               </Field>
@@ -1107,6 +1277,7 @@ export default function ProductForm({
                             onClick={() =>
                               removeVariant(index)
                             }
+                            aria-label={`Remove variant ${index + 1}`}
                             className="flex h-8 w-8 items-center justify-center rounded-full text-red-500 transition hover:bg-red-50"
                           >
                             <Trash2 size={15} />
@@ -1114,73 +1285,81 @@ export default function ProductForm({
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <input
-                            value={variant.label}
-                            onChange={(e) =>
-                              updateVariant(
-                                index,
-                                "label",
-                                e.target.value
-                              )
-                            }
-                            placeholder="3 Seater"
-                            className="input"
-                          />
+                          <MiniField label="Variant name">
+                            <input
+                              value={variant.label}
+                              onChange={(e) =>
+                                updateVariant(
+                                  index,
+                                  "label",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="3 Seater"
+                              className={inputClass}
+                            />
+                          </MiniField>
 
-                          <input
-                            value={variant.sku || ""}
-                            onChange={(e) =>
-                              updateVariant(
-                                index,
-                                "sku",
-                                e.target.value
-                              )
-                            }
-                            placeholder="SKU-001"
-                            className="input"
-                          />
+                          <MiniField label="SKU (optional)">
+                            <input
+                              value={variant.sku || ""}
+                              onChange={(e) =>
+                                updateVariant(
+                                  index,
+                                  "sku",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="SKU-001"
+                              className={inputClass}
+                            />
+                          </MiniField>
 
-                          <input
-                            type="number"
-                            min="0"
-                            value={
-                              variant.price ?? ""
-                            }
-                            onChange={(e) =>
-                              updateVariant(
-                                index,
-                                "price",
-                                e.target.value === ""
-                                  ? 0
-                                  : Number(
-                                      e.target.value
-                                    )
-                              )
-                            }
-                            placeholder="89999"
-                            className="input"
-                          />
+                          <MiniField label="Price (₹)">
+                            <input
+                              type="number"
+                              min="0"
+                              value={
+                                variant.price ?? ""
+                              }
+                              onChange={(e) =>
+                                updateVariant(
+                                  index,
+                                  "price",
+                                  e.target.value === ""
+                                    ? 0
+                                    : Number(
+                                        e.target.value
+                                      )
+                                )
+                              }
+                              placeholder="89999"
+                              className={inputClass}
+                            />
+                          </MiniField>
 
-                          <input
-                            type="number"
-                            min="0"
-                            value={
-                              variant.stockQuantity ?? 0
-                            }
-                            onChange={(e) =>
-                              updateVariant(
-                                index,
-                                "stockQuantity",
-                                e.target.value === ""
-                                  ? 0
-                                  : Number(
-                                      e.target.value
-                                    )
-                              )
-                            }
-                            placeholder="10"
-                            className="input"
-                          />
+                          <MiniField label="Stock quantity">
+                            <input
+                              type="number"
+                              min="0"
+                              value={
+                                variant.stockQuantity ?? 0
+                              }
+                              onChange={(e) =>
+                                updateVariant(
+                                  index,
+                                  "stockQuantity",
+                                  e.target.value === ""
+                                    ? 0
+                                    : Number(
+                                        e.target.value
+                                      )
+                                )
+                              }
+                              placeholder="10"
+                              className={inputClass}
+                            />
+                          </MiniField>
                         </div>
 
                         <div className="mt-4 flex items-center justify-between border-t border-black/5 pt-3">
@@ -1217,7 +1396,7 @@ export default function ProductForm({
               <button
                 type="button"
                 onClick={addVariant}
-                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-xs font-medium transition hover:border-[#9CAF88] hover:bg-[#F9F7F3]"
+                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-xs font-medium transition hover:border-[#6E805D] hover:bg-[#F3F6EF]"
               >
                 <Plus size={15} />
                 Add variant
@@ -1226,8 +1405,10 @@ export default function ProductForm({
 
             {/* BADGES */}
             <FormSection
+              icon={<BadgeCheck size={17} />}
               title="Badges"
-              description="Small highlights displayed around the product."
+              description="Small highlights displayed on the product page."
+              optional
             >
               {form.badges.length === 0 ? (
                 <EmptyState
@@ -1252,53 +1433,60 @@ export default function ProductForm({
                             onClick={() =>
                               removeBadge(index)
                             }
-                            className="flex h-8 w-8 items-center justify-center rounded-full text-red-500 hover:bg-red-50"
+                            aria-label={`Remove badge ${index + 1}`}
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-red-500 transition hover:bg-red-50"
                           >
                             <Trash2 size={15} />
                           </button>
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-3">
-                          <input
-                            value={badge.icon || ""}
-                            onChange={(e) =>
-                              updateBadge(
-                                index,
-                                "icon",
-                                e.target.value
-                              )
-                            }
-                            placeholder="truck"
-                            className="input"
-                          />
+                          <MiniField label="Icon (emoji)">
+                            <input
+                              value={badge.icon || ""}
+                              onChange={(e) =>
+                                updateBadge(
+                                  index,
+                                  "icon",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="🚚"
+                              className={inputClass}
+                            />
+                          </MiniField>
 
-                          <input
-                            value={badge.title || ""}
-                            onChange={(e) =>
-                              updateBadge(
-                                index,
-                                "title",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Free Delivery"
-                            className="input"
-                          />
+                          <MiniField label="Title">
+                            <input
+                              value={badge.title || ""}
+                              onChange={(e) =>
+                                updateBadge(
+                                  index,
+                                  "title",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Free Delivery"
+                              className={inputClass}
+                            />
+                          </MiniField>
 
-                          <input
-                            value={
-                              badge.subtitle || ""
-                            }
-                            onChange={(e) =>
-                              updateBadge(
-                                index,
-                                "subtitle",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Across India"
-                            className="input"
-                          />
+                          <MiniField label="Subtitle">
+                            <input
+                              value={
+                                badge.subtitle || ""
+                              }
+                              onChange={(e) =>
+                                updateBadge(
+                                  index,
+                                  "subtitle",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Across India"
+                              className={inputClass}
+                            />
+                          </MiniField>
                         </div>
                       </div>
                     )
@@ -1309,7 +1497,7 @@ export default function ProductForm({
               <button
                 type="button"
                 onClick={addBadge}
-                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-xs font-medium transition hover:border-[#9CAF88] hover:bg-[#F9F7F3]"
+                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-xs font-medium transition hover:border-[#6E805D] hover:bg-[#F3F6EF]"
               >
                 <Plus size={15} />
                 Add badge
@@ -1318,8 +1506,10 @@ export default function ProductForm({
 
             {/* ACCORDION */}
             <FormSection
+              icon={<FileText size={17} />}
               title="Product information"
               description="Expandable sections such as dimensions, materials, care instructions and delivery information."
+              optional
             >
               {form.accordion.length === 0 ? (
                 <EmptyState
@@ -1334,44 +1524,55 @@ export default function ProductForm({
                         key={index}
                         className="rounded-2xl border border-black/10 bg-[#F9F7F3] p-4"
                       >
-                        <div className="flex gap-3">
-                          <input
-                            value={item.title || ""}
-                            onChange={(e) =>
-                              updateAccordion(
-                                index,
-                                "title",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Dimensions"
-                            className="input flex-1"
-                          />
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/35">
+                            Section {index + 1}
+                          </span>
 
                           <button
                             type="button"
                             onClick={() =>
                               removeAccordion(index)
                             }
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-black/5 bg-white text-red-500 transition hover:bg-red-50"
+                            aria-label={`Remove section ${index + 1}`}
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-red-500 transition hover:bg-red-50"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={15} />
                           </button>
                         </div>
 
-                        <textarea
-                          value={item.content || ""}
-                          onChange={(e) =>
-                            updateAccordion(
-                              index,
-                              "content",
-                              e.target.value
-                            )
-                          }
-                          rows={4}
-                          placeholder="Product information..."
-                          className="input mt-3 resize-none"
-                        />
+                        <div className="space-y-3">
+                          <MiniField label="Section title">
+                            <input
+                              value={item.title || ""}
+                              onChange={(e) =>
+                                updateAccordion(
+                                  index,
+                                  "title",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Dimensions"
+                              className={inputClass}
+                            />
+                          </MiniField>
+
+                          <MiniField label="Content">
+                            <textarea
+                              value={item.content || ""}
+                              onChange={(e) =>
+                                updateAccordion(
+                                  index,
+                                  "content",
+                                  e.target.value
+                                )
+                              }
+                              rows={4}
+                              placeholder="Product information..."
+                              className={textareaClass}
+                            />
+                          </MiniField>
+                        </div>
                       </div>
                     )
                   )}
@@ -1381,7 +1582,7 @@ export default function ProductForm({
               <button
                 type="button"
                 onClick={addAccordion}
-                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-xs font-medium transition hover:border-[#9CAF88] hover:bg-[#F9F7F3]"
+                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-xs font-medium transition hover:border-[#6E805D] hover:bg-[#F3F6EF]"
               >
                 <Plus size={15} />
                 Add information section
@@ -1392,6 +1593,33 @@ export default function ProductForm({
 
           {/* FOOTER */}
           <div className="fixed bottom-0 right-0 z-40 w-full max-w-[900px] border-t border-black/10 bg-[#F6F1EA]/95 px-5 py-4 backdrop-blur-xl sm:px-8">
+            {error ? (
+              <p className="mb-3 flex items-start gap-2 text-xs text-red-600">
+                <AlertCircle
+                  size={14}
+                  className="mt-0.5 shrink-0"
+                />
+                {error}
+              </p>
+            ) : (
+              <p className="mb-3 flex items-center gap-2 text-xs text-black/45">
+                {completedSteps === requiredChecks.length ? (
+                  <>
+                    <CheckCircle2
+                      size={14}
+                      className="text-[#6E805D]"
+                    />
+                    All required details are filled in.
+                  </>
+                ) : (
+                  <>
+                    {completedSteps} of {requiredChecks.length}{" "}
+                    required details complete
+                  </>
+                )}
+              </p>
+            )}
+
             <div className="flex gap-3">
               <button
                 type="button"
@@ -1405,7 +1633,7 @@ export default function ProductForm({
               <button
                 type="submit"
                 disabled={saving}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#20251F] py-3 text-sm font-medium text-white transition hover:bg-[#9CAF88] hover:text-[#20251F] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#20251F] py-3 text-sm font-medium text-white transition hover:bg-[#6E805D] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving && (
                   <Loader2
@@ -1438,11 +1666,13 @@ function FormSection({
   icon,
   title,
   description,
+  optional,
   children,
 }: {
   icon?: React.ReactNode;
   title: string;
   description?: string;
+  optional?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -1455,10 +1685,18 @@ function FormSection({
             </div>
           )}
 
-          <div>
-            <h3 className="font-medium tracking-tight">
-              {title}
-            </h3>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-medium tracking-tight">
+                {title}
+              </h3>
+
+              {optional && (
+                <span className="rounded-full bg-black/5 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-black/40">
+                  Optional
+                </span>
+              )}
+            </div>
 
             {description && (
               <p className="mt-1 max-w-2xl text-xs leading-5 text-black/40">
@@ -1501,11 +1739,29 @@ function Field({
         </span>
 
         {hint && (
-          <span className="text-[10px] text-black/30">
+          <span className="text-[10px] text-black/35">
             {hint}
           </span>
         )}
       </div>
+
+      {children}
+    </label>
+  );
+}
+
+function MiniField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[11px] font-medium text-black/50">
+        {label}
+      </span>
 
       {children}
     </label>
@@ -1524,7 +1780,7 @@ function Toggle({
   description: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-black/10 bg-[#F9F7F3] p-4">
+    <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-black/10 bg-[#F9F7F3] p-4 transition hover:border-black/20">
       <div className="pr-4">
         <p className="text-sm font-medium">
           {title}
@@ -1547,7 +1803,7 @@ function Toggle({
         }`}
       >
         <span
-          className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition ${
+          className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${
             checked
               ? "left-6"
               : "left-1"
@@ -1563,14 +1819,20 @@ function ImagePreview({
   alt,
   onRemove,
   badge,
+  cover,
 }: {
   src: string;
   alt: string;
   onRemove: () => void;
   badge: string;
+  cover?: boolean;
 }) {
   return (
-    <div className="group relative aspect-square overflow-hidden rounded-2xl bg-[#F9F7F3]">
+    <div
+      className={`group relative aspect-square overflow-hidden rounded-2xl bg-[#F9F7F3] ${
+        cover ? "ring-2 ring-[#6E805D] ring-offset-2" : ""
+      }`}
+    >
       <img
         src={src}
         alt={alt}
@@ -1581,9 +1843,16 @@ function ImagePreview({
         {badge}
       </div>
 
+      {cover && (
+        <div className="absolute bottom-2 left-2 rounded-full bg-[#6E805D] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider text-white">
+          Cover
+        </div>
+      )}
+
       <button
         type="button"
         onClick={onRemove}
+        aria-label="Remove image"
         className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-red-500 opacity-0 shadow-sm transition group-hover:opacity-100 hover:bg-red-50"
       >
         <X size={15} />
