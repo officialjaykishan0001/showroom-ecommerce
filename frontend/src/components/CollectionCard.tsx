@@ -20,7 +20,7 @@ export function CollectionCard({
 
   return (
     <motion.a
-      href="#"
+      href="sofas"
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}

@@ -15,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { WhatsAppButton } from "@/components/WhatsAppButton";
 
 
 function NotFoundComponent() {
@@ -129,9 +130,11 @@ function RootComponent() {
     "/admin/orders",
   ].includes(pathname);
 
+  // Covers every admin page, including /admin/orders/$orderId
+  const isAdminRoute = pathname.startsWith("/admin");
+
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-
       <QueryClientProvider client={queryClient}>
         <div className="min-h-screen bg-background text-foreground">
           {!hideLayout && <Navbar />}
@@ -141,9 +144,10 @@ function RootComponent() {
           </main>
 
           {!hideLayout && <Footer />}
+
+          {!hideLayout && !isAdminRoute && <WhatsAppButton />}
         </div>
       </QueryClientProvider>
     </GoogleOAuthProvider>
-
   );
 }

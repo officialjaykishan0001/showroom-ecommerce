@@ -3,6 +3,8 @@ import { Eye, EyeOff, ArrowRight, Check } from "lucide-react";
 import { useMemo, useState, useId } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { registerUser } from "@/lib/auth";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
+
 
 const SWATCHES = [
   { name: "Walnut", className: "bg-[#6B4A32]" },
@@ -383,9 +385,7 @@ export default function SignupPage() {
               </div>
 
               {/* Google */}
-              <button className="w-full border border-stone-300 bg-white py-4 text-sm transition hover:border-[var(--brand-deep-forest-green)] hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--brand-deep-forest-green)]">
-                Continue with Google
-              </button>
+              <GoogleAuthButton onError={setError} />
 
               <p className="mt-8 text-center text-stone-500">
                 Already have an account?{" "}

@@ -14,16 +14,15 @@ export function Footer() {
               Crafted for modern homes. Built with heirloom quality. Designed to be lived in for decades.
             </p>
             <div className="flex gap-3 mt-8">
-              {[Instagram, Facebook, Twitter, Youtube].map((Icon, i) => (
                 <a
-                  key={i}
-                  href="#"
+                  key={1}
+                  href="https://www.instagram.com/decorden.luxury_?stkn=MWl0dG1wb2hwaGRqMg=="
                   aria-label="social"
                   className="h-10 w-10 rounded-full border border-ivory/20 flex items-center justify-center hover:text-[var(--brand-green-muted)] hover:border-[var(--brand-green-muted)] hover:bg-transparent transition-colors hover:-translate-y-0.5 transition-all duration-300"
                 >
-                  <Icon className="h-4 w-4" />
+                  <Instagram className="h-4 w-4" />
                 </a>
-              ))}
+              
             </div>
           </div>
 
@@ -43,13 +42,12 @@ export function Footer() {
           <div className="lg:col-span-2">
             <div className="text-[11px] uppercase tracking-[0.3em] text-[var(--brand-green-muted)] mb-4">Visit</div>
             <p className="text-sm text-ivory/70 leading-relaxed">
-              Vellora Flagship<br />
-              Vadodara,<br />
-              Gujarat<br />
-              390007
+              Khanpur Gao, <br />
+              near Sevasi Chokdi, <br />
+              Vadodara, Gujarat 391101
             </p>
-            <a href="tel:+911234567890" className="mt-4 inline-block text-sm text-ivory hover:text-[var(--brand-green-muted-dark)] transition-colors">
-              +91 12345 67890
+            <a href="tel:+919265359819" className="mt-4 inline-block text-sm text-ivory hover:text-[var(--brand-green-muted-dark)] transition-colors">
+              +91 92653 59819
             </a>
           </div>
         </div>
