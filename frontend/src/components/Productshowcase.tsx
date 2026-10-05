@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Minus, Plus, ChevronDown, ShoppingBag } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -25,6 +25,7 @@ export interface ProductBadge {
 export interface Product {
   id: string;
   name: string;
+  description?: string;
   price: number;
   compareAtPrice?: number; // for strike-through / discount display
   currency?: string; // defaults to INR
@@ -44,6 +45,10 @@ interface ProductShowcaseProps {
   onBuyNow?: (payload: { productId: string; variantId?: string; quantity: number }) => void;
 }
 
+// Descriptions longer than this are shortened on top and shown in full
+// in the product information section below.
+const DESCRIPTION_PREVIEW_LIMIT = 180;
+
 // ---------------------------------------------------------------------------
 
 function formatPrice(amount: number, currency = "INR") {
@@ -52,6 +57,18 @@ function formatPrice(amount: number, currency = "INR") {
     currency,
     maximumFractionDigits: 2,
   }).format(amount);
+}
+
+// Cuts text at a word boundary and adds an ellipsis.
+function getPreview(text: string, limit: number) {
+  const clean = text.replace(/\s+/g, " ").trim();
+
+  if (clean.length <= limit) return clean;
+
+  const cut = clean.slice(0, limit);
+  const lastSpace = cut.lastIndexOf(" ");
+
+  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
 function GallerySkeleton() {
@@ -187,15 +204,22 @@ function Badges({ badges }: { badges: ProductBadge[] }) {
   );
 }
 
-function Accordion({ sections }: { sections: ProductAccordionSection[] }) {
-  const [open, setOpen] = useState<number | null>(null);
+function Accordion({
+  sections,
+  open,
+  onToggle,
+}: {
+  sections: ProductAccordionSection[];
+  open: number | null;
+  onToggle: (index: number | null) => void;
+}) {
   if (sections.length === 0) return null;
   return (
     <div className="divide-y divide-stone-200 border-t border-stone-200">
       {sections.map((s, i) => (
-        <div key={s.title}>
+        <div key={`${s.title}-${i}`}>
           <button
-            onClick={() => setOpen(open === i ? null : i)}
+            onClick={() => onToggle(open === i ? null : i)}
             className="flex w-full items-center justify-between py-3 text-left text-[12px] font-medium uppercase tracking-wide text-stone-800"
           >
             {s.title}
@@ -204,7 +228,9 @@ function Accordion({ sections }: { sections: ProductAccordionSection[] }) {
             />
           </button>
           {open === i && (
-            <p className="pb-3 text-[13px] leading-relaxed text-stone-600">{s.content}</p>
+            <p className="whitespace-pre-line pb-3 text-[13px] leading-relaxed text-stone-600">
+              {s.content}
+            </p>
           )}
         </div>
       ))}
@@ -225,11 +251,27 @@ export default function ProductShowcase({
     product?.variants?.[0]?.id ?? null
   );
   const [quantity, setQuantity] = useState(1);
+  const [openSection, setOpenSection] = useState<number | null>(null);
+
+  const infoRef = useRef<HTMLDivElement>(null);
 
   const selectedVariant = useMemo(
     () => product?.variants?.find((v) => v.id === selectedVariantId) ?? null,
     [product, selectedVariantId]
   );
+
+  const description = product?.description?.trim() ?? "";
+  const isLongDescription = description.length > DESCRIPTION_PREVIEW_LIMIT;
+
+  // Long descriptions get their own "Description" section at the top of the
+  // product information list, so the whole text is available below.
+  const accordionSections = useMemo<ProductAccordionSection[]>(() => {
+    const base = product?.accordion ?? [];
+
+    return isLongDescription
+      ? [{ title: "Description", content: description }, ...base]
+      : base;
+  }, [product?.accordion, isLongDescription, description]);
 
   const displayPrice = selectedVariant?.price ?? product?.price ?? 0;
   const currency = product?.currency ?? "INR";
@@ -272,6 +314,18 @@ export default function ProductShowcase({
     });
   };
 
+  // Opens the Description section (index 0) and scrolls it into view.
+  const handleReadMore = () => {
+    setOpenSection(0);
+
+    requestAnimationFrame(() => {
+      infoRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  };
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.6fr_1fr]">
@@ -292,6 +346,31 @@ export default function ProductShowcase({
               <p className="mt-1 text-[13px] font-medium text-red-600">Out of stock</p>
             )}
           </div>
+
+          {/* Description: full text if short, preview + link if long */}
+          {description && (
+            <div>
+              {isLongDescription ? (
+                <>
+                  <p className="text-[14px] leading-relaxed text-stone-600">
+                    {getPreview(description, DESCRIPTION_PREVIEW_LIMIT)}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={handleReadMore}
+                    className="mt-2 text-[12px] font-medium uppercase tracking-wide text-[#241a14] underline underline-offset-4 transition-colors hover:text-stone-500"
+                  >
+                    Read full description
+                  </button>
+                </>
+              ) : (
+                <p className="whitespace-pre-line text-[14px] leading-relaxed text-stone-600">
+                  {description}
+                </p>
+              )}
+            </div>
+          )}
 
           {product.variants && product.variants.length > 0 && (
             <VariantSelector
@@ -323,7 +402,14 @@ export default function ProductShowcase({
           </button>
 
           {product.badges && <Badges badges={product.badges} />}
-          {product.accordion && <Accordion sections={product.accordion} />}
+
+          <div ref={infoRef} className="scroll-mt-6">
+            <Accordion
+              sections={accordionSections}
+              open={openSection}
+              onToggle={setOpenSection}
+            />
+          </div>
         </div>
       </div>
     </main>

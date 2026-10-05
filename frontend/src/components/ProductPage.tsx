@@ -47,6 +47,8 @@ function mapProduct(data: any): Product {
 
         name: product.name,
 
+        description: product.description || "",
+
         price: product.price,
 
         compareAtPrice: product.compareAtPrice,
@@ -470,7 +472,7 @@ export default function ProductPage() {
     // --------------------------------------------------
     // RENDER
     // --------------------------------------------------
-
+    console.log(product)
     return (
         <>
             <ProductShowcase
